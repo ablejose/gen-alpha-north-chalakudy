@@ -37,19 +37,10 @@ export function socialHandle(url: string): string {
 }
 
 /**
- * Split a brand/business name into a primary line (the main brand word) and a
- * secondary descriptor line (e.g. "Gold", "Gold and Diamonds", "Jewellery").
- * Only splits multi-word names whose combined letters exceed 7, so short or
- * single-word names stay on a single line.
+ * Return the brand/business name as a single primary line, with no secondary
+ * descriptor. The wordmark shows the full name together (e.g. "Gen Alpha")
+ * instead of splitting the first word onto its own line.
  */
 export function splitBrandName(name: string): { primary: string; secondary: string } {
-  const trimmed = name.trim();
-  const words = trimmed.split(/\s+/);
-  const letterCount = trimmed.replace(/\s+/g, "").length;
-
-  if (words.length > 1 && letterCount > 7) {
-    return { primary: words[0], secondary: words.slice(1).join(" ") };
-  }
-
-  return { primary: trimmed, secondary: "" };
+  return { primary: name.trim(), secondary: "" };
 }
