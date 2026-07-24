@@ -1,176 +1,176 @@
 "use client";
 
-import { type FormEvent, useCallback, useEffect, useRef, useState } from "react";
+import { type FormEvent, useRef, useState } from "react";
 import Image from "next/image";
 import type { Collection } from "@/types/collections";
-import {
-  CLOUDINARY_UPLOAD_PRESET,
-  CLOUDINARY_UPLOAD_URL,
-  collectionTag,
-} from "@/config/cloudinary";
-import { fetchCollectionProducts, type RemoteProduct } from "@/lib/cloudinary";
+import type { ManifestProduct } from "@/lib/manifest";
+import { apiJson, signAndUpload } from "@/components/admin/cloud";
 import { formatRupees } from "@/lib/format";
 
-/**
- * One collection's product manager in the admin panel. Add a product by
- * choosing an image and entering its name + price; all three are required.
- * The upload goes straight to Cloudinary via the unsigned preset, tagged with
- * the collection's site-namespaced tag, with the name + price stored as
- * Cloudinary context metadata so the public pages can read them back.
- *
- * Note: unsigned uploads can ADD products but cannot edit or delete them
- * (that needs a signed/admin API). Editing/removing is done from the Cloudinary
- * dashboard — or ask to add a small backend for full edit/delete.
- */
-export function CollectionUploader({ collection }: { collection: Collection }) {
-  const [products, setProducts] = useState<RemoteProduct[]>([]);
-  const [loading, setLoading] = useState(true);
+interface Props {
+  collection: Collection;
+  products: ManifestProduct[];
+  loading: boolean;
+  onChanged: () => void | Promise<void>;
+}
 
+export function CollectionUploader({ collection, products, loading, onChanged }: Props) {
+  const fileRef = useRef<HTMLInputElement>(null);
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
   const [file, setFile] = useState<File | null>(null);
-  const [uploading, setUploading] = useState(false);
+  const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
-  const inputRef = useRef<HTMLInputElement>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  const refresh = useCallback(async () => {
-    setLoading(true);
-    const items = await fetchCollectionProducts(collection.slug, { fresh: true });
-    setProducts(items);
-    setLoading(false);
-  }, [collection.slug]);
+  const resetForm = () => {
+    setName("");
+    setPrice("");
+    setFile(null);
+    if (fileRef.current) fileRef.current.value = "";
+  };
 
-  useEffect(() => {
-    void refresh();
-  }, [refresh]);
-
-  const addProduct = async (event: FormEvent) => {
-    event.preventDefault();
+  const add = async (e: FormEvent) => {
+    e.preventDefault();
     setStatus("");
     setError("");
-
-    const trimmedName = name.trim();
     const priceNum = Number(price);
-    if (!file) return setError("Please choose an image.");
-    if (!trimmedName) return setError("Please enter a product name.");
-    if (!Number.isFinite(priceNum) || priceNum <= 0) return setError("Please enter a valid price.");
+    if (!file) return setError("Choose an image.");
+    if (!name.trim()) return setError("Enter a product name.");
+    if (!(priceNum > 0)) return setError("Enter a valid price.");
 
-    // Context uses "|" and "=" as separators, so strip them from the name.
-    const safeName = trimmedName.replace(/[|=]/g, " ").trim();
-
-    const form = new FormData();
-    form.append("file", file);
-    form.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
-    form.append("tags", collectionTag(collection.slug));
-    form.append("context", `name=${safeName}|price=${Math.round(priceNum)}`);
-
-    setUploading(true);
+    setBusy(true);
     try {
-      const res = await fetch(CLOUDINARY_UPLOAD_URL, { method: "POST", body: form });
-      if (res.ok) {
-        setStatus(
-          `Added "${safeName}". It can take a few minutes (up to ~1 hour) to appear on the live site.`,
-        );
-        setName("");
-        setPrice("");
-        setFile(null);
-        if (inputRef.current) inputRef.current.value = "";
-        setTimeout(() => void refresh(), 4000);
-      } else {
-        const body = (await res.json().catch(() => null)) as
-          | { error?: { message?: string } }
-          | null;
-        const message = body?.error?.message || `Upload failed (HTTP ${res.status}).`;
-        setError(`${message} Check that the Cloudinary unsigned upload preset "${CLOUDINARY_UPLOAD_PRESET}" exists.`);
-      }
-    } catch {
-      setError("Network error while uploading.");
+      const uploaded = await signAndUpload(collection.slug, file);
+      await apiJson("/api/admin/products", "POST", {
+        slug: collection.slug,
+        publicId: uploaded.publicId,
+        name: name.trim(),
+        price: Math.round(priceNum),
+      });
+      setStatus(`Added “${name.trim()}”.`);
+      resetForm();
+      await onChanged();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to add product.");
     } finally {
-      setUploading(false);
+      setBusy(false);
+    }
+  };
+
+  const remove = async (product: ManifestProduct) => {
+    setError("");
+    setStatus("");
+    setDeletingId(product.publicId);
+    try {
+      await apiJson("/api/admin/products", "DELETE", {
+        slug: collection.slug,
+        publicId: product.publicId,
+      });
+      await onChanged();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete product.");
+    } finally {
+      setDeletingId(null);
     }
   };
 
   return (
-    <section className="rounded-card border border-border p-6 md:p-8">
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="font-display text-display-m text-ivory">{collection.name}</h2>
-        <span className="font-sans text-caption uppercase tracking-[0.16em] text-muted">
-          /collections/{collection.slug}
-        </span>
-      </div>
+    <section className="rounded-card border border-border bg-[#0b0b12] p-6 md:p-8">
+      <header className="flex items-baseline justify-between gap-4">
+        <h2 className="font-display text-2xl text-ivory">{collection.name}</h2>
+        <span className="text-xs uppercase tracking-widest text-ivory/40">/{collection.slug}</span>
+      </header>
 
-      <form onSubmit={addProduct} className="mt-6 grid gap-4 md:grid-cols-[1fr_1fr_auto] md:items-end">
-        <label className="flex flex-col gap-2">
-          <span className="font-sans text-caption uppercase tracking-[0.16em] text-muted">Product name</span>
+      <form onSubmit={add} className="mt-5 grid gap-4 md:grid-cols-[1fr_auto_auto] md:items-end">
+        <div>
+          <label className="block text-sm text-ivory/80" htmlFor={`name-${collection.slug}`}>
+            Product name
+          </label>
           <input
-            type="text"
+            id={`name-${collection.slug}`}
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="e.g. Kundan Necklace"
-            className="min-h-[44px] rounded-pill border border-gold/40 bg-background px-4 font-sans text-body text-ivory outline-none focus:border-gold"
+            className="mt-1 w-full rounded-lg border border-border bg-black/40 px-3 py-2 text-ivory outline-none focus:border-gold"
+            disabled={busy}
           />
-        </label>
-
-        <label className="flex flex-col gap-2">
-          <span className="font-sans text-caption uppercase tracking-[0.16em] text-muted">Price (₹)</span>
+        </div>
+        <div>
+          <label className="block text-sm text-ivory/80" htmlFor={`price-${collection.slug}`}>
+            Price (₹)
+          </label>
           <input
+            id={`price-${collection.slug}`}
             type="number"
             min="1"
+            step="1"
+            inputMode="numeric"
             value={price}
             onChange={(e) => setPrice(e.target.value)}
-            placeholder="e.g. 25000"
-            className="min-h-[44px] rounded-pill border border-gold/40 bg-background px-4 font-sans text-body text-ivory outline-none focus:border-gold"
+            className="mt-1 w-40 rounded-lg border border-border bg-black/40 px-3 py-2 text-ivory outline-none focus:border-gold"
+            disabled={busy}
           />
-        </label>
-
-        <div className="flex flex-col gap-2">
-          <span className="font-sans text-caption uppercase tracking-[0.16em] text-muted">Image</span>
-          <div className="flex items-center gap-3">
-            <label className="btn-secondary cursor-pointer whitespace-nowrap">
-              {file ? "Change" : "Choose"}
-              <input
-                ref={inputRef}
-                type="file"
-                accept="image/*"
-                onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-                className="hidden"
-              />
-            </label>
-            <button type="submit" disabled={uploading} className="btn-primary whitespace-nowrap">
-              {uploading ? "Adding..." : "Add product"}
-            </button>
-          </div>
-          {file ? (
-            <span className="max-w-[220px] truncate font-sans text-caption text-muted">{file.name}</span>
-          ) : null}
         </div>
+        <div>
+          <label className="block text-sm text-ivory/80" htmlFor={`file-${collection.slug}`}>
+            Photo
+          </label>
+          <input
+            id={`file-${collection.slug}`}
+            ref={fileRef}
+            type="file"
+            accept="image/*"
+            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+            className="mt-1 block w-full text-sm text-ivory/70 file:mr-3 file:rounded-full file:border-0 file:bg-gold file:px-4 file:py-2 file:text-black"
+            disabled={busy}
+          />
+        </div>
+        <button
+          type="submit"
+          disabled={busy}
+          className="rounded-full bg-gold px-6 py-2.5 font-medium text-black transition hover:opacity-90 disabled:opacity-50 md:col-span-3 md:justify-self-start"
+        >
+          {busy ? "Uploading…" : "Add product"}
+        </button>
       </form>
 
-      {status ? <p className="mt-4 font-sans text-body text-gold">{status}</p> : null}
-      {error ? <p className="mt-4 font-sans text-body text-[#e88]">{error}</p> : null}
+      {status ? <p className="mt-3 text-sm text-gold">{status}</p> : null}
+      {error ? <p className="mt-3 text-sm text-[#ff9b9b]">{error}</p> : null}
 
-      <div className="mt-6 border-t border-border pt-6">
+      <div className="mt-6">
         {loading ? (
-          <p className="font-sans text-body text-muted">Loading current products...</p>
+          <p className="text-sm text-ivory/50">Loading current photos…</p>
         ) : products.length === 0 ? (
-          <p className="font-sans text-body text-muted">
-            No products yet. The live page shows placeholder items until you add some.
-          </p>
+          <p className="text-sm text-ivory/50">No products yet.</p>
         ) : (
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
+          <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
             {products.map((product) => (
-              <div key={product.id} className="flex flex-col">
-                <div className="relative aspect-[4/5] overflow-hidden rounded-md border border-gold/20">
-                  <Image src={product.url} alt={product.name} fill sizes="160px" className="object-cover" />
+              <li key={product.publicId} className="group relative overflow-hidden rounded-lg border border-border">
+                <div className="relative aspect-[3/4] bg-black/40">
+                  <Image
+                    src={product.url}
+                    alt={product.name}
+                    fill
+                    sizes="(max-width: 640px) 50vw, 20vw"
+                    className="object-cover"
+                  />
                 </div>
-                <span className="mt-2 truncate font-sans text-body text-ivory">{product.name || "Untitled"}</span>
-                <span className="font-sans text-caption text-gold">
-                  {product.price > 0 ? formatRupees(product.price) : "No price"}
-                </span>
-              </div>
+                <div className="p-2">
+                  <p className="truncate text-sm text-ivory">{product.name}</p>
+                  <p className="text-xs text-gold">{formatRupees(product.price)}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => remove(product)}
+                  disabled={deletingId === product.publicId}
+                  className="absolute right-2 top-2 rounded-full bg-black/70 px-3 py-1 text-xs text-[#ff9b9b] opacity-0 transition group-hover:opacity-100 disabled:opacity-100"
+                >
+                  {deletingId === product.publicId ? "Removing…" : "Delete"}
+                </button>
+              </li>
             ))}
-          </div>
+          </ul>
         )}
       </div>
     </section>

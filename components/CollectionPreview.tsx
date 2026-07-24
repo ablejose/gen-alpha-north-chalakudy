@@ -1,14 +1,12 @@
-"use client";
-
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import type { Collection } from "@/types/collections";
 import { collectionHref } from "@/lib/format";
-import { fetchCollectionProducts } from "@/lib/cloudinary";
 
 interface CollectionPreviewProps {
   collection: Collection;
+  /** Preview image URLs (already resolved server-side: manifest first, else config). */
+  images: string[];
 }
 
 /**
@@ -17,26 +15,14 @@ interface CollectionPreviewProps {
  *   [ Collection Name .......................... View All → ]
  *   [ continuous right-to-left scrolling preview of images  ]
  *
- * Shows the first three admin-uploaded product images when available (from
- * /admin), otherwise the first three config products — so the row is never
- * empty and matches whatever the collection page shows. Reuses the site's
- * `.marquee-rtl` (smooth, infinite, pauses on hover). Clicking "View All" or
- * any image opens /collections/{slug}.
+ * Server component — the preview images are resolved by the parent section from
+ * the Cloudinary manifest (falling back to config products), so this renders no
+ * client fetch. Reuses the site's `.marquee-rtl` (smooth, infinite, pauses on
+ * hover). Clicking "View All" or any image opens /collections/{slug}.
  */
-export function CollectionPreview({ collection }: CollectionPreviewProps) {
+export function CollectionPreview({ collection, images }: CollectionPreviewProps) {
   const href = collectionHref(collection.slug);
-  const configPreview = collection.products.slice(0, 3).map((p) => p.image);
-  const [preview, setPreview] = useState<string[]>(configPreview);
-
-  useEffect(() => {
-    let active = true;
-    fetchCollectionProducts(collection.slug).then((items) => {
-      if (active && items.length > 0) setPreview(items.slice(0, 3).map((p) => p.url));
-    });
-    return () => {
-      active = false;
-    };
-  }, [collection.slug]);
+  const preview = images.slice(0, 3);
 
   if (preview.length === 0) return null;
 

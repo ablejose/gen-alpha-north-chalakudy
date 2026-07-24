@@ -5,64 +5,37 @@ import type { Collection, Product } from "@/types/collections";
 import { ProductCard } from "@/components/ProductCard";
 import { ProductsLoadingScreen } from "@/components/ProductsLoadingScreen";
 import { BackButton } from "@/components/BackButton";
-import { fetchCollectionProducts, type RemoteProduct } from "@/lib/cloudinary";
 
 type SortMode = "featured" | "asc" | "desc";
-
-function toProduct(remote: RemoteProduct, fallbackName: string): Product {
-  return {
-    id: remote.id,
-    name: remote.name || fallbackName,
-    price: remote.price,
-    image: remote.url,
-  };
-}
 
 /**
  * Client view for a collection page.
  *
- * Products come from the admin panel (single source of truth): if an admin has
- * added products for this collection via /admin (image + name + ₹ price stored
- * on Cloudinary), those render here. Otherwise it falls back to the sample
- * products in config/collections.ts. Either way the layout, price filter and
- * loading screen behave identically.
- *
- * A loading screen stays up until every image on the page has loaded (requested
- * eagerly while gated), so no partial imagery is shown.
+ * Products are resolved on the server (from the Cloudinary manifest, falling
+ * back to config samples) and passed in as `products` — this component no longer
+ * fetches. It keeps the price sort and the loading screen that gates on all
+ * product imagery so no partial grid is shown.
  */
-export function CollectionView({ collection }: { collection: Collection }) {
-  // null = still fetching admin products; [] = none; [items] = use these.
-  const [remote, setRemote] = useState<RemoteProduct[] | null>(null);
+export function CollectionView({
+  collection,
+  products: initialProducts,
+}: {
+  collection: Collection;
+  products: Product[];
+}) {
   const [ready, setReady] = useState(false);
   const [sort, setSort] = useState<SortMode>("featured");
   const loadedCount = useRef(0);
 
+  const totalImages = initialProducts.length;
+
+  // Reset the loader gate whenever the product set changes.
   useEffect(() => {
-    let active = true;
-    fetchCollectionProducts(collection.slug).then((items) => {
-      if (active) setRemote(items);
-    });
-    return () => {
-      active = false;
-    };
-  }, [collection.slug]);
-
-  const baseProducts = useMemo<Product[]>(() => {
-    if (remote === null) return [];
-    if (remote.length > 0) return remote.map((r) => toProduct(r, collection.name));
-    return collection.products;
-  }, [remote, collection.products, collection.name]);
-
-  const totalImages = baseProducts.length;
-
-  // Once we know which product set renders, reset the loader gate and start it.
-  useEffect(() => {
-    if (remote === null) return; // still deciding — loader stays up
     loadedCount.current = 0;
     setReady(totalImages === 0);
     const timeout = setTimeout(() => setReady(true), 7000);
     return () => clearTimeout(timeout);
-  }, [remote, totalImages]);
+  }, [totalImages]);
 
   const handleAssetSettled = () => {
     loadedCount.current += 1;
@@ -70,14 +43,14 @@ export function CollectionView({ collection }: { collection: Collection }) {
   };
 
   const products = useMemo(() => {
-    const list = [...baseProducts];
+    const list = [...initialProducts];
     if (sort === "asc") list.sort((a, b) => a.price - b.price);
     if (sort === "desc") list.sort((a, b) => b.price - a.price);
     return list;
-  }, [baseProducts, sort]);
+  }, [initialProducts, sort]);
 
-  const showLoader = remote === null || !ready;
-  const showSort = remote !== null && baseProducts.length > 0;
+  const showLoader = !ready;
+  const showSort = initialProducts.length > 0;
 
   return (
     <>
@@ -118,7 +91,7 @@ export function CollectionView({ collection }: { collection: Collection }) {
           ) : null}
         </header>
 
-        {remote !== null && baseProducts.length === 0 ? (
+        {initialProducts.length === 0 ? (
           <p className="mt-16 text-center font-sans text-body text-muted">
             Pieces from this collection are coming soon.
           </p>

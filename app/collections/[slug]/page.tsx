@@ -6,12 +6,15 @@ import { FloatingWhatsApp } from "@/sections/FloatingWhatsApp";
 import { CollectionView } from "@/components/CollectionView";
 import { COLLECTIONS, getCollection } from "@/config/collections";
 import { BRAND } from "@/config/brand";
+import type { Product } from "@/types/collections";
+import { getPublicManifest, productsForSlug } from "@/lib/manifest";
 
 interface PageProps {
   params: { slug: string };
 }
 
 // Statically generate a page for every collection in config; unknown slugs 404.
+// Revalidated on demand via revalidateTag("manifest") when an admin edits products.
 export const dynamicParams = false;
 
 export function generateStaticParams() {
@@ -35,15 +38,29 @@ export function generateMetadata({ params }: PageProps): Metadata {
   };
 }
 
-export default function CollectionPage({ params }: PageProps) {
+export default async function CollectionPage({ params }: PageProps) {
   const collection = getCollection(params.slug);
   if (!collection) notFound();
+
+  // Admin-managed products (Cloudinary manifest) are the source of truth; fall
+  // back to the config sample products when none have been uploaded yet.
+  const manifest = await getPublicManifest();
+  const managed = productsForSlug(manifest, collection.slug);
+  const products: Product[] =
+    managed.length > 0
+      ? managed.map((p) => ({
+          id: p.publicId,
+          name: p.name || collection.name,
+          price: p.price,
+          image: p.url,
+        }))
+      : collection.products;
 
   return (
     <>
       <Navbar />
       <main className="pt-28 md:pt-32">
-        <CollectionView collection={collection} />
+        <CollectionView collection={collection} products={products} />
       </main>
       <Footer />
       <FloatingWhatsApp />
