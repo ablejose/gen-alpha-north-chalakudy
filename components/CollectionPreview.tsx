@@ -1,7 +1,11 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import type { Collection } from "@/types/collections";
 import { collectionHref } from "@/lib/format";
+import { fetchCollectionImages } from "@/lib/cloudinary";
 
 interface CollectionPreviewProps {
   collection: Collection;
@@ -11,20 +15,33 @@ interface CollectionPreviewProps {
  * One homepage row per collection:
  *
  *   [ Collection Name .......................... View All → ]
- *   [ continuous right-to-left scrolling preview of products ]
+ *   [ continuous right-to-left scrolling preview of images  ]
  *
- * The preview uses the first three products (in config order) and reuses the
- * site's `.marquee-rtl` (smooth, infinite, pauses on hover on desktop).
- * Clicking "View All" or any preview image opens /collections/{slug}.
- * Everything updates automatically from config/collections.ts.
+ * Shows the first three admin-uploaded images when available (from /admin),
+ * otherwise the first three config products — so the row is never empty and
+ * matches whatever the collection page shows. Reuses the site's `.marquee-rtl`
+ * (smooth, infinite, pauses on hover). Clicking "View All" or any image opens
+ * /collections/{slug}.
  */
 export function CollectionPreview({ collection }: CollectionPreviewProps) {
   const href = collectionHref(collection.slug);
-  const preview = collection.products.slice(0, 3);
+  const configPreview = collection.products.slice(0, 3).map((p) => p.image);
+  const [preview, setPreview] = useState<string[]>(configPreview);
+
+  useEffect(() => {
+    let active = true;
+    fetchCollectionImages(collection.slug).then((imgs) => {
+      if (active && imgs.length > 0) setPreview(imgs.slice(0, 3));
+    });
+    return () => {
+      active = false;
+    };
+  }, [collection.slug]);
+
   if (preview.length === 0) return null;
 
-  // Repeat the first three enough to fill wide viewports, then duplicate the
-  // whole track so the `-50%` marquee keyframe loops with no visible jump.
+  // Repeat the images enough to fill wide viewports, then duplicate the whole
+  // track so the `-50%` marquee keyframe loops with no visible jump.
   const half = [...preview, ...preview, ...preview];
   const track = [...half, ...half];
 
@@ -42,17 +59,17 @@ export function CollectionPreview({ collection }: CollectionPreviewProps) {
 
       <div className="mt-6 overflow-hidden [mask-image:linear-gradient(to_right,transparent,black_6%,black_94%,transparent)]">
         <div className="marquee-rtl flex w-max gap-6">
-          {track.map((product, index) => (
+          {track.map((src, index) => (
             <Link
-              key={`${product.id}-${index}`}
+              key={`${src}-${index}`}
               href={href}
               aria-label={`View the ${collection.name} collection`}
               className="group relative block w-56 shrink-0 overflow-hidden rounded-3xl border border-gold/20 shadow-xl shadow-black/40 ring-1 ring-white/5 sm:w-64 md:w-72"
             >
               <div className="relative aspect-[4/5] w-full">
                 <Image
-                  src={product.image}
-                  alt={product.name}
+                  src={src}
+                  alt={`${collection.name} preview`}
                   fill
                   sizes="(max-width: 768px) 60vw, 20vw"
                   className="object-cover transition-transform duration-700 ease-lux group-hover:scale-105"
