@@ -1,37 +1,59 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import Image from "next/image";
 import type { Collection } from "@/types/collections";
 import { ProductCard } from "@/components/ProductCard";
 import { ProductsLoadingScreen } from "@/components/ProductsLoadingScreen";
+import { BackButton } from "@/components/BackButton";
+import { fetchCollectionImages } from "@/lib/cloudinary";
 
 type SortMode = "featured" | "asc" | "desc";
 
 /**
- * Client view for a collection page:
- *   • An elegant loading screen stays up until every product image has loaded
- *     (images are requested eagerly while gated), so no partial imagery shows.
- *   • Instant client-side price filter (Low→High / High→Low) — no reload.
+ * Client view for a collection page.
  *
- * Product cards keep stable keys (product.id) so re-sorting never remounts them
- * or re-triggers the loader.
+ * Image source (single source of truth = the admin panel):
+ *   • If an admin has uploaded images for this collection (via /admin), the
+ *     page shows those in a gallery.
+ *   • Otherwise it falls back to the sample products in config/collections.ts
+ *     (which also carry a name + ₹ price, so the price filter is shown).
+ *
+ * A loading screen stays up until the destination page's images have all
+ * loaded (requested eagerly while gated), so no partial imagery is shown.
  */
 export function CollectionView({ collection }: { collection: Collection }) {
-  const total = collection.products.length;
-  const [ready, setReady] = useState(total === 0);
+  // null = still fetching; [] = none uploaded; [urls] = gallery mode.
+  const [adminImages, setAdminImages] = useState<string[] | null>(null);
+  const [ready, setReady] = useState(false);
   const [sort, setSort] = useState<SortMode>("featured");
   const loadedCount = useRef(0);
 
-  // Safety net: never let the loader hang if a request stalls.
   useEffect(() => {
-    if (total === 0) return;
+    let active = true;
+    fetchCollectionImages(collection.slug).then((imgs) => {
+      if (active) setAdminImages(imgs);
+    });
+    return () => {
+      active = false;
+    };
+  }, [collection.slug]);
+
+  const galleryMode = (adminImages?.length ?? 0) > 0;
+  const totalImages = galleryMode ? adminImages!.length : collection.products.length;
+
+  // Once we know which image set renders, reset the gate and start it.
+  useEffect(() => {
+    if (adminImages === null) return; // still deciding — loader stays up
+    loadedCount.current = 0;
+    setReady(totalImages === 0);
     const timeout = setTimeout(() => setReady(true), 7000);
     return () => clearTimeout(timeout);
-  }, [total]);
+  }, [adminImages, totalImages]);
 
   const handleAssetSettled = () => {
     loadedCount.current += 1;
-    if (loadedCount.current >= total) setReady(true);
+    if (loadedCount.current >= totalImages) setReady(true);
   };
 
   const products = useMemo(() => {
@@ -41,11 +63,18 @@ export function CollectionView({ collection }: { collection: Collection }) {
     return list;
   }, [collection.products, sort]);
 
+  const showLoader = adminImages === null || !ready;
+  const showSort = adminImages !== null && !galleryMode && collection.products.length > 0;
+
   return (
     <>
-      {!ready ? <ProductsLoadingScreen name={collection.name} /> : null}
+      {showLoader ? <ProductsLoadingScreen name={collection.name} /> : null}
 
       <section className="container-lux pb-24 md:pb-32">
+        <div className="mb-8">
+          <BackButton />
+        </div>
+
         <header className="flex flex-col gap-6 border-b border-border pb-8 md:flex-row md:items-end md:justify-between">
           <div>
             <span className="label-eyebrow">Collection</span>
@@ -57,24 +86,47 @@ export function CollectionView({ collection }: { collection: Collection }) {
             ) : null}
           </div>
 
-          <label className="flex items-center gap-3 md:shrink-0">
-            <span className="font-sans text-caption uppercase tracking-[0.16em] text-muted">
-              Sort by
-            </span>
-            <select
-              value={sort}
-              onChange={(event) => setSort(event.target.value as SortMode)}
-              className="min-h-[44px] rounded-pill border border-gold/40 bg-background px-5 font-sans text-sm text-ivory outline-none transition-colors hover:border-gold focus:border-gold"
-              aria-label="Sort products by price"
-            >
-              <option value="featured">Featured</option>
-              <option value="asc">Price: Low to High</option>
-              <option value="desc">Price: High to Low</option>
-            </select>
-          </label>
+          {showSort ? (
+            <label className="flex items-center gap-3 md:shrink-0">
+              <span className="font-sans text-caption uppercase tracking-[0.16em] text-muted">
+                Sort by
+              </span>
+              <select
+                value={sort}
+                onChange={(event) => setSort(event.target.value as SortMode)}
+                className="min-h-[44px] rounded-pill border border-gold/40 bg-background px-5 font-sans text-sm text-ivory outline-none transition-colors hover:border-gold focus:border-gold"
+                aria-label="Sort products by price"
+              >
+                <option value="featured">Featured</option>
+                <option value="asc">Price: Low to High</option>
+                <option value="desc">Price: High to Low</option>
+              </select>
+            </label>
+          ) : null}
         </header>
 
-        {products.length === 0 ? (
+        {galleryMode ? (
+          <div className="mt-12 grid grid-cols-2 gap-6 sm:gap-8 lg:grid-cols-3 xl:grid-cols-4">
+            {adminImages!.map((src) => (
+              <div
+                key={src}
+                className="group relative aspect-[4/5] w-full overflow-hidden rounded-3xl border border-gold/20 shadow-xl shadow-black/40 ring-1 ring-white/5"
+              >
+                <Image
+                  src={src}
+                  alt={`${collection.name} piece`}
+                  fill
+                  sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                  className="object-cover transition-transform duration-700 ease-lux group-hover:scale-105"
+                  loading="eager"
+                  onLoad={handleAssetSettled}
+                  onError={handleAssetSettled}
+                />
+                <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-background/50 via-transparent to-transparent" />
+              </div>
+            ))}
+          </div>
+        ) : collection.products.length === 0 ? (
           <p className="mt-16 text-center font-sans text-body text-muted">
             Pieces from this collection are coming soon.
           </p>
