@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import type { Collection } from "@/types/collections";
 import { collectionHref } from "@/lib/format";
-import { fetchCollectionImages } from "@/lib/cloudinary";
+import { fetchCollectionProducts } from "@/lib/cloudinary";
 
 interface CollectionPreviewProps {
   collection: Collection;
@@ -17,11 +17,11 @@ interface CollectionPreviewProps {
  *   [ Collection Name .......................... View All → ]
  *   [ continuous right-to-left scrolling preview of images  ]
  *
- * Shows the first three admin-uploaded images when available (from /admin),
- * otherwise the first three config products — so the row is never empty and
- * matches whatever the collection page shows. Reuses the site's `.marquee-rtl`
- * (smooth, infinite, pauses on hover). Clicking "View All" or any image opens
- * /collections/{slug}.
+ * Shows the first three admin-uploaded product images when available (from
+ * /admin), otherwise the first three config products — so the row is never
+ * empty and matches whatever the collection page shows. Reuses the site's
+ * `.marquee-rtl` (smooth, infinite, pauses on hover). Clicking "View All" or
+ * any image opens /collections/{slug}.
  */
 export function CollectionPreview({ collection }: CollectionPreviewProps) {
   const href = collectionHref(collection.slug);
@@ -30,8 +30,8 @@ export function CollectionPreview({ collection }: CollectionPreviewProps) {
 
   useEffect(() => {
     let active = true;
-    fetchCollectionImages(collection.slug).then((imgs) => {
-      if (active && imgs.length > 0) setPreview(imgs.slice(0, 3));
+    fetchCollectionProducts(collection.slug).then((items) => {
+      if (active && items.length > 0) setPreview(items.slice(0, 3).map((p) => p.url));
     });
     return () => {
       active = false;

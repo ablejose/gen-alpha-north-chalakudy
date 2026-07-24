@@ -45,7 +45,9 @@ export function ProductCard({ product, eager = false, onSettled }: ProductCardPr
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-background/50 via-transparent to-transparent" />
       </div>
       <h3 className="mt-4 font-display text-xl text-ivory">{product.name}</h3>
-      <p className="mt-1 font-sans text-body text-gold">{formatRupees(product.price)}</p>
+      <p className="mt-1 font-sans text-body text-gold">
+        {product.price > 0 ? formatRupees(product.price) : "Price on request"}
+      </p>
     </article>
   );
 }
