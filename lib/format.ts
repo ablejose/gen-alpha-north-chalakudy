@@ -44,3 +44,16 @@ export function socialHandle(url: string): string {
 export function splitBrandName(name: string): { primary: string; secondary: string } {
   return { primary: name.trim(), secondary: "" };
 }
+
+/**
+ * Format a plain rupee amount with the ₹ symbol and Indian digit grouping.
+ * e.g. 25000 -> "₹ 25,000", 185000 -> "₹ 1,85,000".
+ */
+export function formatRupees(amount: number): string {
+  return `₹ ${Math.round(amount).toLocaleString("en-IN")}`;
+}
+
+/** Build the route to a collection page from its slug. */
+export function collectionHref(slug: string): string {
+  return `/collections/${slug}`;
+}

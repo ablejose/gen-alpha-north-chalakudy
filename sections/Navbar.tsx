@@ -6,15 +6,19 @@ import { useScrolled } from "@/hooks/useScrolled";
 import { splitBrandName } from "@/lib/format";
 import { BRAND } from "@/config/brand";
 
+// Links are absolute (with a leading "/") so they resolve from any page,
+// including the /collections/{slug} pages, not just the homepage.
 const LINKS = [
-  { label: "About", href: "#about" },
-  { label: "Visit Store", href: "#visit-store" },
-  { label: "Contact", href: "#contact" },
+  { label: "Collections", href: "/#collections" },
+  { label: "About", href: "/#about" },
+  { label: "Visit Store", href: "/#visit-store" },
+  { label: "Contact", href: "/#contact" },
 ];
 
 /**
  * Sticky navigation. Scrolled state becomes more opaque with backdrop blur and
- * reduced padding (Document 2 §3). Mobile uses a full-screen overlay menu.
+ * reduced padding. Mobile uses a full-screen overlay menu. Uses next/link so
+ * navigation (including hash targets on the homepage) works from any route.
  */
 export function Navbar() {
   const scrolled = useScrolled();
@@ -49,10 +53,8 @@ export function Navbar() {
       }`}
     >
       <nav className="container-lux flex items-center justify-between" aria-label="Primary">
-        <Link href="#top" className="flex flex-col leading-none" aria-label={`${BRAND.businessName} home`}>
-          <span className="font-display text-xl tracking-wide text-gold">
-            {primary}
-          </span>
+        <Link href="/" className="flex flex-col leading-none" aria-label={`${BRAND.businessName} home`}>
+          <span className="font-display text-xl tracking-wide text-gold">{primary}</span>
           {secondary ? (
             <span className="mt-1 font-sans text-[0.6rem] uppercase tracking-[0.22em] text-gold/75">
               {secondary}
@@ -63,12 +65,12 @@ export function Navbar() {
         <ul className="hidden items-center gap-10 md:flex">
           {LINKS.map((link) => (
             <li key={link.href}>
-              <a
+              <Link
                 href={link.href}
                 className="font-sans text-sm tracking-wide text-muted transition-colors duration-300 hover:text-ivory"
               >
                 {link.label}
-              </a>
+              </Link>
             </li>
           ))}
         </ul>
@@ -87,14 +89,14 @@ export function Navbar() {
       {open ? (
         <div className="fixed inset-0 top-0 z-40 flex flex-col items-center justify-center gap-10 bg-background md:hidden">
           {LINKS.map((link) => (
-            <a
+            <Link
               key={link.href}
               href={link.href}
               onClick={() => setOpen(false)}
               className="font-display text-display-m text-ivory"
             >
               {link.label}
-            </a>
+            </Link>
           ))}
         </div>
       ) : null}
