@@ -49,7 +49,7 @@ export function CollectionUploader({ collection, products, loading, onChanged }:
         name: name.trim(),
         price: Math.round(priceNum),
       });
-      setStatus(`Added “${name.trim()}”.`);
+      setStatus(`Added “${name.trim()}”. See the preview below.`);
       resetForm();
       await onChanged();
     } catch (err) {
@@ -60,6 +60,10 @@ export function CollectionUploader({ collection, products, loading, onChanged }:
   };
 
   const remove = async (product: ManifestProduct) => {
+    if (typeof window !== "undefined") {
+      const ok = window.confirm(`Delete “${product.name || "this item"}” from ${collection.name}?`);
+      if (!ok) return;
+    }
     setError("");
     setStatus("");
     setDeletingId(product.publicId);
@@ -68,6 +72,7 @@ export function CollectionUploader({ collection, products, loading, onChanged }:
         slug: collection.slug,
         publicId: product.publicId,
       });
+      setStatus("Deleted.");
       await onChanged();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to delete product.");
@@ -80,7 +85,9 @@ export function CollectionUploader({ collection, products, loading, onChanged }:
     <section className="rounded-card border border-border bg-[#0b0b12] p-6 md:p-8">
       <header className="flex items-baseline justify-between gap-4">
         <h2 className="font-display text-2xl text-ivory">{collection.name}</h2>
-        <span className="text-xs uppercase tracking-widest text-ivory/40">/{collection.slug}</span>
+        <span className="text-xs uppercase tracking-widest text-ivory/40">
+          {products.length} {products.length === 1 ? "item" : "items"} · /{collection.slug}
+        </span>
       </header>
 
       <form onSubmit={add} className="mt-5 grid gap-4 md:grid-cols-[1fr_auto_auto] md:items-end">
@@ -139,37 +146,49 @@ export function CollectionUploader({ collection, products, loading, onChanged }:
       {error ? <p className="mt-3 text-sm text-[#ff9b9b]">{error}</p> : null}
 
       <div className="mt-6">
+        <p className="mb-3 text-xs uppercase tracking-widest text-ivory/40">In this category</p>
         {loading ? (
           <p className="text-sm text-ivory/50">Loading current photos…</p>
         ) : products.length === 0 ? (
-          <p className="text-sm text-ivory/50">No products yet.</p>
+          <p className="text-sm text-ivory/50">
+            No products yet. Uploaded items appear here with a Delete button.
+          </p>
         ) : (
           <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-            {products.map((product) => (
-              <li key={product.publicId} className="group relative overflow-hidden rounded-lg border border-border">
-                <div className="relative aspect-[3/4] bg-black/40">
-                  <Image
-                    src={product.url}
-                    alt={product.name}
-                    fill
-                    sizes="(max-width: 640px) 50vw, 20vw"
-                    className="object-cover"
-                  />
-                </div>
-                <div className="p-2">
-                  <p className="truncate text-sm text-ivory">{product.name}</p>
-                  <p className="text-xs text-gold">{formatRupees(product.price)}</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => remove(product)}
-                  disabled={deletingId === product.publicId}
-                  className="absolute right-2 top-2 rounded-full bg-black/70 px-3 py-1 text-xs text-[#ff9b9b] opacity-0 transition group-hover:opacity-100 disabled:opacity-100"
+            {products.map((product) => {
+              const isDeleting = deletingId === product.publicId;
+              return (
+                <li
+                  key={product.publicId}
+                  className="flex flex-col overflow-hidden rounded-lg border border-border bg-black/20"
                 >
-                  {deletingId === product.publicId ? "Removing…" : "Delete"}
-                </button>
-              </li>
-            ))}
+                  <div className="relative aspect-[3/4] bg-black/40">
+                    <Image
+                      src={product.url}
+                      alt={product.name}
+                      fill
+                      sizes="(max-width: 640px) 50vw, 20vw"
+                      className="object-cover"
+                    />
+                  </div>
+                  <div className="flex flex-1 flex-col p-2">
+                    <p className="truncate text-sm text-ivory">{product.name || "Untitled"}</p>
+                    <p className="text-xs text-gold">
+                      {product.price > 0 ? formatRupees(product.price) : "Price on request"}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => remove(product)}
+                      disabled={isDeleting}
+                      aria-label={`Delete ${product.name || "product"}`}
+                      className="mt-2 w-full rounded-md border border-[#ff9b9b]/40 bg-[#ff9b9b]/10 px-2 py-1.5 text-xs font-medium text-[#ff9b9b] transition hover:bg-[#ff9b9b]/20 disabled:opacity-60"
+                    >
+                      {isDeleting ? "Removing…" : "Delete"}
+                    </button>
+                  </div>
+                </li>
+              );
+            })}
           </ul>
         )}
       </div>
