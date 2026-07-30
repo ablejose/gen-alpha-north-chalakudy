@@ -36,7 +36,9 @@ export function Hero() {
 
       <div className="container-lux relative z-10">
         <div className="max-w-2xl">
-          <h1 className="font-display text-display-l text-gold-sweep">{primary}</h1>
+          <h1 className="font-sans text-display-l font-black uppercase tracking-[0.14em] text-gold-sweep">
+            {primary}
+          </h1>
           <p className="mt-4 max-w-xl font-sans text-body-lg text-gold">{BRAND.tagline}</p>
           <p className="mt-3 line-clamp-2 max-w-xl font-sans text-body text-muted max-sm:hidden">
             {BRAND.description}
