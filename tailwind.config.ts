@@ -24,6 +24,7 @@ const config: Config = {
         // Wired to next/font CSS variables in app/layout.tsx
         display: ["var(--font-cormorant)", "Cormorant Garamond", "serif"],
         sans: ["var(--font-inter)", "Inter", "system-ui", "sans-serif"],
+        title: ["var(--font-montserrat)", "Montserrat", "system-ui", "sans-serif"],
       },
       fontSize: {
         "display-xl": ["clamp(3.5rem, 8vw, 5.5rem)", { lineHeight: "1.05", letterSpacing: "-0.01em" }],

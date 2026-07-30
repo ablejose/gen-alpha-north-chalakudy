@@ -19,9 +19,9 @@ export function ProductsLoadingScreen({ name }: { name: string }) {
       <Image
         src={BRAND.logo}
         alt={`${BRAND.businessName} logo`}
-        width={600}
-        height={518}
-        className="mb-1 h-auto w-32"
+        width={375}
+        height={407}
+        className="mb-1 h-auto w-24"
       />
       <span className="px-6 text-center font-display text-display-m text-ivory">{name}</span>
       <span className="mt-1 flex items-center gap-2" aria-hidden="true">

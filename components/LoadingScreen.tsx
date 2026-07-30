@@ -50,23 +50,18 @@ export function LoadingScreen() {
       role="status"
       aria-live="polite"
       aria-label={`Loading ${BRAND.businessName}`}
-      className={`fixed inset-0 z-[9999] flex flex-col items-center justify-center gap-6 bg-background transition-opacity duration-500 ease-lux ${
+      className={`fixed inset-0 z-[9999] flex items-center justify-center bg-background transition-opacity duration-500 ease-lux ${
         fading ? "pointer-events-none opacity-0" : "opacity-100"
       }`}
     >
       <Image
         src={BRAND.logo}
         alt={`${BRAND.businessName} logo`}
-        width={600}
-        height={518}
+        width={375}
+        height={407}
         priority
-        className="h-auto w-48 md:w-56"
+        className="h-auto w-40 animate-pulse md:w-48"
       />
-      <span className="flex items-center gap-2" aria-hidden="true">
-        <span className="h-2.5 w-2.5 animate-bounce rounded-pill bg-gold [animation-delay:-0.3s]" />
-        <span className="h-2.5 w-2.5 animate-bounce rounded-pill bg-gold [animation-delay:-0.15s]" />
-        <span className="h-2.5 w-2.5 animate-bounce rounded-pill bg-gold" />
-      </span>
     </div>
   );
 }

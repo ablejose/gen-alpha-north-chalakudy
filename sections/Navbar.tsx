@@ -56,10 +56,10 @@ export function Navbar() {
           <Image
             src={BRAND.logo}
             alt={`${BRAND.businessName} logo`}
-            width={600}
-            height={518}
+            width={375}
+            height={407}
             priority
-            className="h-12 w-auto md:h-14"
+            className="h-11 w-auto md:h-12"
           />
         </Link>
 
