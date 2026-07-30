@@ -13,6 +13,8 @@ import { StoryVideoPlayer } from "@/components/StoryVideo";
  * under the video on desktop or past the viewport edge on mobile.
  */
 export function StoryChapters() {
+  if (BRAND.storyVideos.length === 0) return null;
+
   return (
     <section className="flex flex-col gap-24 py-12 md:gap-32 md:py-16">
       {BRAND.storyVideos.map((chapter, index) => (
