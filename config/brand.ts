@@ -10,9 +10,9 @@ export const BRAND: BrandConfig = {
   businessName: "Gen Alpha",
   tagline: "Trendy Imitation Jewellery in Chalakudy",
   description:
-    "Gen Alpha is Chalakudy's favourite destination for trendy imitation and fashion jewellery. We serve Chalakudy and the surrounding areas with elegant, affordable designs that capture the look of gold, diamond and silver for every celebration.",
+    "Gen Alpha is Chalakudy's favourite destination for trendy imitation and fashion jewellery.",
 
-  logo: "/icons/logo.svg",
+  logo: "/logo.png",
   favicon: "/favicon.ico",
 
   heroVideo:

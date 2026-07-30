@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { useScrolled } from "@/hooks/useScrolled";
-import { splitBrandName } from "@/lib/format";
 import { BRAND } from "@/config/brand";
 
 // Links are absolute (with a leading "/") so they resolve from any page,
@@ -23,7 +23,6 @@ const LINKS = [
 export function Navbar() {
   const scrolled = useScrolled();
   const [open, setOpen] = useState(false);
-  const { primary, secondary } = splitBrandName(BRAND.businessName);
 
   // While the mobile menu is open, lock the page scroll so a scroll gesture
   // first dismisses the menu ("goes back"); normal scrolling resumes only
@@ -53,13 +52,15 @@ export function Navbar() {
       }`}
     >
       <nav className="container-lux flex items-center justify-between" aria-label="Primary">
-        <Link href="/" className="flex flex-col leading-none" aria-label={`${BRAND.businessName} home`}>
-          <span className="font-display text-xl tracking-wide text-gold">{primary}</span>
-          {secondary ? (
-            <span className="mt-1 font-sans text-[0.6rem] uppercase tracking-[0.22em] text-gold/75">
-              {secondary}
-            </span>
-          ) : null}
+        <Link href="/" className="flex items-center leading-none" aria-label={`${BRAND.businessName} home`}>
+          <Image
+            src={BRAND.logo}
+            alt={`${BRAND.businessName} logo`}
+            width={600}
+            height={518}
+            priority
+            className="h-12 w-auto md:h-14"
+          />
         </Link>
 
         <ul className="hidden items-center gap-10 md:flex">
@@ -82,7 +83,7 @@ export function Navbar() {
           aria-expanded={open}
           onClick={() => setOpen((v) => !v)}
         >
-          <span className="text-lg">{open ? "✕" : "☰"}</span>
+          <span className="text-lg">{open ? "\u2715" : "\u2630"}</span>
         </button>
       </nav>
 
