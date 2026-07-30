@@ -14,15 +14,15 @@ export function BrandIntro() {
           <Reveal>
             <span className="label-eyebrow">Our Heritage</span>
             <h2 className="mt-4 font-display text-display-l text-ivory">
-              Craftsmanship you can wear for a lifetime.
+              Elegant looks for every occasion, without the price tag.
             </h2>
             <p className="mt-6 max-w-2xl font-sans text-body-lg text-muted">
               {BRAND.description}
             </p>
             <p className="mt-4 max-w-2xl font-sans text-body text-muted">
-              Every piece is chosen for its balance of beauty and lightness — refined designs in
-              gold, diamonds and silver, offered as per your occasion, and made to accompany the
-              moments that matter most.
+              Every piece is chosen for its balance of beauty and everyday wearability — trendy
+              imitation designs inspired by classic gold, diamond and silver looks, offered to
+              suit any occasion and priced so you can refresh your style as often as you like.
             </p>
           </Reveal>
         </div>
