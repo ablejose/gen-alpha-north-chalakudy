@@ -74,7 +74,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const jsonLd = buildJsonLd(BRAND);
 
   return (
-    <html lang="en" className={`${cormorant.variable} ${inter.variable}`}>
+    <html lang="en" className={`${cormorant.variable} ${inter.variable} ${montserrat.variable}`}>
       <head>
         <link rel="preconnect" href="https://res.cloudinary.com" crossOrigin="" />
         {jsonLd.map((schema, index) => (
